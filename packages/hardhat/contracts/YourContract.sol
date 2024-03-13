@@ -19,10 +19,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
  */
 contract YourContract is ERC721 {
 
-	// State Variables
+	// State Variables & Admin
 	address public immutable owner;
-	using Counters for Counters.Counter;
-	Counters.Counter private _tokenIds;
+
+	modifier isOwner() {
+		// msg.sender: predefined variable that represents address of the account that called the current function
+		require(msg.sender == owner, "Not the Owner");
+		_;
+	}
 
 	// Epoch data, where I store the number of NFTs minted (will limit withdraws to NFT ids >= total minted) and the amount paid to track how much they're owed
 	struct epochData {
@@ -34,16 +38,24 @@ contract YourContract is ERC721 {
 	uint256 public currentEpoch = 0;
 	mapping(uint256 => mapping(uint256 => bool)) private hasWithdrawn;
 
-	// Custom getter function for epochs mapping, idk if needed but keeping the code just in case
-	// function getEpochData(uint256 epochIndex) public view returns (uint256[] memory, uint256[] memory) {
-	//     epochData storage data = epochs[epochIndex];
-	//     return (data.nftsMinted, data.amtOwed);
-	// }
+
+	// NFT Data
+	using Counters for Counters.Counter;
+	Counters.Counter private _tokenIds;
+	//// URI for all tokens
+	string private _commonURI;
 
 
+	function setCommonURI(string memory newURI) public isOwner {
+			_commonURI = newURI;
+	}
 
-	// // Storing NFT withdrawal data
-	// mapping(uint256 => uint256[]) private nftIdWithdraws;
+	function tokenURI(uint256 tokenId) public view override returns (string memory) {
+			require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+			return _commonURI;
+    }
+	// Storing NFT withdrawal data
+	mapping(uint256 => uint256[]) private nftIdWithdraws;
 	
 	// Billboard Variables
 	string public billboard = "This Space for Sale";
@@ -56,6 +68,11 @@ contract YourContract is ERC721 {
 	mapping(address => uint) public userBillboardCounter;
 
 
+	constructor(address _owner, string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
+        owner = _owner;
+        lastUpdateTime = block.timestamp;
+				_commonURI = initialURI;
+    }
 	// Events: a way to emit log statements from smart contract that can be listened to by external parties
 	event BillboardChange(
 		address indexed billboardSetter,
@@ -69,24 +86,15 @@ contract YourContract is ERC721 {
 	// Constructor: Called once on contract deployment
 	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
 	
-	// ScaffoldETH starter constructor
-	// constructor(address _owner) {
-	// 	owner = _owner;
-	// 	lastUpdateTime = block.timestamp; // Set the last update time to the deployment time
-	// }
 
 	// Modifier: used to define a set of rules that must be met before or after a function is executed
 	// Check the withdraw() function
-	modifier isOwner() {
-		// msg.sender: predefined variable that represents address of the account that called the current function
-		require(msg.sender == owner, "Not the Owner");
-		_;
-	}
+
 
 	event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
 	/**
-	 * Function that allows anyone to change the state variable "billboard" of the contract and increase the counters
+	 * Function that allows anyone to change the state variable "billboard" of the contract
 	 *
 	 * @param _newBillboardMessage (string memory) - new billboard message to save on the contract
 	 */
@@ -107,7 +115,6 @@ contract YourContract is ERC721 {
 		userBillboardCounter[msg.sender] += 1;
 		lastPrice = msg.value + 1;
 		lastUpdateTime = block.timestamp;
-
 
 		// create a new epoch entry
 		currentEpoch +=1; // move to next epoch
@@ -176,13 +183,7 @@ contract YourContract is ERC721 {
 					
 	}
 
-	constructor(address _owner) ERC721("BillboardNFT", "BBNFT") {
-        owner = _owner;
-        lastUpdateTime = block.timestamp;
-    }
-
     function mintNFT() public {
-
 				// this is to limit NFT mints to 1 per address
 				require(balanceOf(msg.sender) == 0, "Address already owns an NFT");
 
@@ -191,11 +192,20 @@ contract YourContract is ERC721 {
         uint256 newItemId = _tokenIds.current();
         _mint(msg.sender, newItemId);
 
-
         // Adjust the lastPrice by +10 as per requirement
         lastPrice += 10;
-
         console.log("Minted NFT ID %s to %s", newItemId, msg.sender);
+    }
+
+		 /**
+     * Function to allow the owner to change the billboard message.
+     * @param _newMessage The new message to set on the billboard.
+     */
+    function adminSetBillboardMessage(string memory _newMessage) public isOwner {
+        billboard = _newMessage;
+
+        // Optionally, you can emit an event when the billboard message is changed by the admin
+        emit BillboardChange(msg.sender, _newMessage, premium, 0);
     }
 
     // Override the _transfer function to prevent transfers
@@ -206,6 +216,12 @@ contract YourContract is ERC721 {
     ) internal override {
         revert("NFTs are non-transferable");
     }
+
+		function burn(uint256 tokenId) public {
+			require(ownerOf(tokenId) == msg.sender, "Caller is not the token owner");
+			_burn(tokenId);
+		}
+
 	/**
 	 * Function that allows the contract to receive ETH
 	 */
