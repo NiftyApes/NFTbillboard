@@ -39,23 +39,6 @@ console.log(ethAmount, typeof(ethAmount));
 
 const [bString, setbString] = useState<string>();
 
-  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
-  //   contractName: "YourContract",
-  //   functionName: "setBillboard",
-  //   args: [bString],
-  //   value: ethAmount,
-  // })
-
-  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
-  //   contractName: "YourContract",
-  //   functionName: "mintNFT",
-  // })
-
-  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
-  //   contractName: "YourContract",
-  //   functionName: "shareWithdraw",
-  //   args: []
-  // })
   return (
     <>
       <div className="flex items-center flex-col flex-grow pt-10">

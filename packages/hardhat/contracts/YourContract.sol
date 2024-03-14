@@ -8,6 +8,7 @@ import "hardhat/console.sol";
 // Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
@@ -18,12 +19,11 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * 
  * TODOS
  *  - Figure out actual costs ($1 to set ad? +10cents to mint?) to set everything at
- *  - multiple epoch withdraw -- 
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
  */
-contract YourContract is ERC721 {
+contract YourContract is ERC721Enumerable {
 
 	// State Variables & Admin
 	address public immutable owner;
@@ -169,17 +169,8 @@ contract YourContract is ERC721 {
         (bool success, ) = owner.call{value: amount}("");
         require(success, "Transfer failed.");
     }
-	/**
-	 * Function that allows the owner to withdraw all the Ether in the contract
-	 * The function can only be called by the owner of the contract as defined by the isOwner modifier
-	 */
-	// function withdraw() public isOwner {
-	// 	(bool success, ) = owner.call{ value: address(this).balance }("");
-	// 	require(success, "Failed to send Ether");
-	// }
 
-
-	function shareWithdraw(uint256 epochNumber, uint256 nftId) public {
+	function claimShare(uint256 epochNumber, uint256 nftId) public {
 		   
     require(ownerOf(nftId) == msg.sender, "Caller does not own the NFT"); // Verify the caller owns the NFT
     require(epochNumber <= currentEpoch, "Invalid epoch number"); // Ensure the epochNumber is valid
@@ -204,6 +195,36 @@ contract YourContract is ERC721 {
 		 emit WithdrawalSuccessful(epochNumber, nftId, amountOwed);
 					
 	}
+
+	function claimAllShares(uint256 nftId) public {
+    require(ownerOf(nftId) == msg.sender, "Caller does not own the NFT");
+
+    uint256 totalAmount = 0;
+
+    for (uint256 epochNumber = 1; epochNumber <= currentEpoch; epochNumber++) {
+        if (!hasWithdrawn[epochNumber][nftId]) {
+            epochData storage data = epochs[epochNumber];
+            require(nftId <= data.nftsMinted, "NFT ID is not eligible for this epoch");
+
+            uint256 amountOwed = data.amtOwed;
+            require(address(this).balance >= amountOwed, "Insufficient contract balance");
+
+            // Mark as withdrawn
+            hasWithdrawn[epochNumber][nftId] = true;
+
+            // Accumulate the amount owed
+            totalAmount += amountOwed;
+
+            // Emitting successful withdrawal for each epoch
+            emit WithdrawalSuccessful(epochNumber, nftId, amountOwed);
+        }
+    }
+
+    // After calculating the total amount owed across all epochs, transfer it in a single transaction
+    if (totalAmount > 0) {
+        Address.sendValue(payable(msg.sender), totalAmount);
+    }
+}
 
     function mintNFT() public {
 				// this is to limit NFT mints to 1 per address

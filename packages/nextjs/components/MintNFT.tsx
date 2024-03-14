@@ -19,7 +19,7 @@ const MintNFT: React.FC<MintNFTProps> = ({  }) => {
         <div>
           Mint NFT
           <button className="btn btn-primary" onClick={() => writeAsync()} disabled={isLoading}>
-            {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send</>}
+            {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Mint</>}
           </button>
         </div>
       </>
