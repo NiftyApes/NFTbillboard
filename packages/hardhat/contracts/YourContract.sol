@@ -232,6 +232,11 @@ contract YourContract is ERC721 {
         emit BillboardChange(msg.sender, _newMessage, premium, 0);
     }
 
+		function setProtocolFeePercent(uint256 _newFeePercent) public isOwner {
+        require(_newFeePercent <= 100, "Fee cannot exceed 100%");
+        protocolFee = _newFeePercent;
+    }
+
     // Override the _transfer function to prevent transfers
     function _transfer(
         address from,
