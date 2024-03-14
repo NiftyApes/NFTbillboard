@@ -13,8 +13,13 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 
 /**
- * A smart contract that allows changing a state variable of the contract and tracking the changes
- * It also allows the owner to withdraw the Ether in the contract
+ * A simple billboard smartcontract, where a message state variable is for sale! Folks who mint the NFT 
+ * opt in to be advertised to, and so are entitled to a cut from the proceeds
+ * 
+ * TODOS
+ *  - Figure out actual costs ($1 to set ad? +10cents to mint?) to set everything at
+ *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
+ *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
  */
 contract YourContract is ERC721 {
@@ -27,6 +32,9 @@ contract YourContract is ERC721 {
 		require(msg.sender == owner, "Not the Owner");
 		_;
 	}
+
+	uint256 public protocolFee = 10; // percentage protocol takes
+	uint256 public protocolRevenue = 0; // protocol's revenue 
 
 	// Epoch data, where I store the number of NFTs minted (will limit withdraws to NFT ids >= total minted) and the amount paid to track how much they're owed
 	struct epochData {
@@ -42,6 +50,7 @@ contract YourContract is ERC721 {
 	// NFT Data
 	using Counters for Counters.Counter;
 	Counters.Counter private _tokenIds;
+	Counters.Counter private _activeTokens; // Active (non-burned) token count
 	//// URI for all tokens
 	string private _commonURI;
 
@@ -109,6 +118,7 @@ contract YourContract is ERC721 {
 		uint256 adjustedPrice = getAdjustedPrice(); // 
 		require(msg.value >= adjustedPrice, "Insufficient funds sent");
 
+
 		// Change state variables
 		billboard = _newBillboardMessage;
 		totalCounter += 1;
@@ -116,12 +126,15 @@ contract YourContract is ERC721 {
 		lastPrice = msg.value + 1;
 		lastUpdateTime = block.timestamp;
 
+		uint256 fee = msg.value * protocolFee / 100;
+		protocolRevenue += fee;
+		uint256 remainder = msg.value - fee;
 		// create a new epoch entry
 		currentEpoch +=1; // move to next epoch
 
 		// Calculate the amount owed per NFT, handling division by zero by setting amtOwed to 0 if no NFTs have been minted
-    uint256 nftsMintedSoFar = _tokenIds.current();
-    uint256 amtOwedPerNFT = nftsMintedSoFar > 0 ? msg.value / nftsMintedSoFar : 0;
+    uint256 nftsMintedSoFar = _activeTokens.current();
+    uint256 amtOwedPerNFT = nftsMintedSoFar > 0 ? remainder / nftsMintedSoFar : 0;
 
 		// Store the new epoch data
     epochs[currentEpoch] = epochData(nftsMintedSoFar, amtOwedPerNFT);
@@ -147,6 +160,14 @@ contract YourContract is ERC721 {
     return adjustedPrice;
 	}
 
+	function withdrawProtocolFees() public isOwner {
+        uint256 amount = protocolRevenue;
+        protocolRevenue = 0; // Reset the accumulated fees to 0
+
+        // Transfer the accumulated fees to the owner
+        (bool success, ) = owner.call{value: amount}("");
+        require(success, "Transfer failed.");
+    }
 	/**
 	 * Function that allows the owner to withdraw all the Ether in the contract
 	 * The function can only be called by the owner of the contract as defined by the isOwner modifier
@@ -192,6 +213,9 @@ contract YourContract is ERC721 {
         uint256 newItemId = _tokenIds.current();
         _mint(msg.sender, newItemId);
 
+				// increment active token counter
+				_activeTokens.increment();
+
         // Adjust the lastPrice by +10 as per requirement
         lastPrice += 10;
         console.log("Minted NFT ID %s to %s", newItemId, msg.sender);
@@ -220,8 +244,13 @@ contract YourContract is ERC721 {
 		function burn(uint256 tokenId) public {
 			require(ownerOf(tokenId) == msg.sender, "Caller is not the token owner");
 			_burn(tokenId);
+
+			_activeTokens.decrement();
 		}
 
+    function totalActiveTokens() public view returns (uint256) {
+        return _activeTokens.current();
+    }
 	/**
 	 * Function that allows the contract to receive ETH
 	 */
