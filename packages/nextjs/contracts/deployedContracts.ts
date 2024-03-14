@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+      address: "0x0E801D84Fa97b50751Dbf25036d067dCf18858bF",
       abi: [
         {
           inputs: [
@@ -180,6 +180,19 @@ const deployedContracts = {
           ],
           name: "WithdrawalSuccessful",
           type: "event",
+        },
+        {
+          inputs: [],
+          name: "_tokenIds",
+          outputs: [
+            {
+              internalType: "uint256",
+              name: "_value",
+              type: "uint256",
+            },
+          ],
+          stateMutability: "view",
+          type: "function",
         },
         {
           inputs: [
@@ -584,6 +597,19 @@ const deployedContracts = {
             },
           ],
           name: "setCommonURI",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "_newFeePercent",
+              type: "uint256",
+            },
+          ],
+          name: "setProtocolFeePercent",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

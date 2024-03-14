@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { NextPage } from "next";
 import { useAccount, useContractRead } from "wagmi";
 import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Address, EtherInput, InputBase } from "~~/components/scaffold-eth";
 import { readContract } from "viem/_types/actions/public/readContract";
 import { useScaffoldContract, useScaffoldContractRead, useScaffoldContractWrite } from "~~/hooks/scaffold-eth";
+import SetBillboard from '../components/SetBillboard';
+import MintNFT from '../components/MintNFT';
+import WithdrawShare from '../components/WithdrawShare';
 
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
@@ -21,24 +24,38 @@ const Home: NextPage = () => {
     functionName: "getAdjustedPrice",
 })
 
+// get price + let user set their own
 const [ethAmount, setEthAmount] = useState('');
-const [bString, setbString] = useState<string>();
+const initialLoadDone = useRef(false);
 
 useEffect(() => {
-  if (getAdjustedPrice) {
+  if (getAdjustedPrice && !initialLoadDone.current) {
     setEthAmount(getAdjustedPrice.toString());
+    initialLoadDone.current = true;
   }
 }, [getAdjustedPrice]);
 
-console.log(getAdjustedPrice, ethAmount);
+console.log(ethAmount, typeof(ethAmount));
 
-  const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
-    contractName: "YourContract",
-    functionName: "setBillboard",
-    args: [bString],
-    value: BigInt(ethAmount),
-  })
+const [bString, setbString] = useState<string>();
 
+  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
+  //   contractName: "YourContract",
+  //   functionName: "setBillboard",
+  //   args: [bString],
+  //   value: ethAmount,
+  // })
+
+  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
+  //   contractName: "YourContract",
+  //   functionName: "mintNFT",
+  // })
+
+  // const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
+  //   contractName: "YourContract",
+  //   functionName: "shareWithdraw",
+  //   args: []
+  // })
   return (
     <>
       <div className="flex items-center flex-col flex-grow pt-10">
@@ -47,12 +64,15 @@ console.log(getAdjustedPrice, ethAmount);
             Billboard Message: {billboardMessage} <br />
             AdjustedPrice: {getAdjustedPrice?.toString()} <br />
             EthAmount: {ethAmount}
+
+            <SetBillboard
+              ethAmount={ethAmount}
+            />
  
-        <EtherInput value={ethAmount} onChange={amount => setEthAmount(amount)}></EtherInput>
-        <InputBase name="newBillboardString" placeholder="Your New Message" value={bString} onChange={setbString}></InputBase>
-        <button className="btn btn-primary" onClick={() => writeAsync()} disabled={isLoading}>
-          {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send</>}
-        </button>
+          <MintNFT />
+          <WithdrawShare />
+
+
           {/* TODOS
             - Change Message
               - Add URL string (?)  --- SC

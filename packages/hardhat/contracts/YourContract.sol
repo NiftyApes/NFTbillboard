@@ -18,6 +18,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * 
  * TODOS
  *  - Figure out actual costs ($1 to set ad? +10cents to mint?) to set everything at
+ *  - multiple epoch withdraw -- 
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
@@ -49,7 +50,7 @@ contract YourContract is ERC721 {
 
 	// NFT Data
 	using Counters for Counters.Counter;
-	Counters.Counter private _tokenIds;
+	Counters.Counter public _tokenIds;
 	Counters.Counter private _activeTokens; // Active (non-burned) token count
 	//// URI for all tokens
 	string private _commonURI;
