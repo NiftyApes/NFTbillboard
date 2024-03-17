@@ -18,7 +18,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * opt in to be advertised to, and so are entitled to a cut from the proceeds
  * 
  * TODOS
- *  - Figure out actual costs ($1 to set ad? +10cents to mint?) to set everything at
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
@@ -71,10 +70,10 @@ contract YourContract is ERC721Enumerable {
 	string public billboard = "This Space for Sale";
 	bool public premium = false;
 	uint256 public totalCounter = 0;
-	uint256 public basePrice = 150;
+	uint256 public basePrice = 270000000000000;
 	uint256 public lastPrice = basePrice;
 	uint256 public lastUpdateTime;
-	uint256 public decreaseRate = 1;
+	uint256 public decreaseRate = 270000000000;
 	mapping(address => uint) public userBillboardCounter;
 
 
@@ -196,15 +195,14 @@ contract YourContract is ERC721Enumerable {
 					
 	}
 
-	function claimAllShares(uint256 nftId) public {
+	function claimShareAll(uint256 nftId) public {
     require(ownerOf(nftId) == msg.sender, "Caller does not own the NFT");
 
-    uint256 totalAmount = 0;
+    uint256 totalShare = 0;
 
     for (uint256 epochNumber = 1; epochNumber <= currentEpoch; epochNumber++) {
-        if (!hasWithdrawn[epochNumber][nftId]) {
+        if (!hasWithdrawn[epochNumber][nftId] && nftId <= epochs[epochNumber].nftsMinted) {
             epochData storage data = epochs[epochNumber];
-            require(nftId <= data.nftsMinted, "NFT ID is not eligible for this epoch");
 
             uint256 amountOwed = data.amtOwed;
             require(address(this).balance >= amountOwed, "Insufficient contract balance");
@@ -213,7 +211,7 @@ contract YourContract is ERC721Enumerable {
             hasWithdrawn[epochNumber][nftId] = true;
 
             // Accumulate the amount owed
-            totalAmount += amountOwed;
+            totalShare += amountOwed;
 
             // Emitting successful withdrawal for each epoch
             emit WithdrawalSuccessful(epochNumber, nftId, amountOwed);
@@ -221,13 +219,13 @@ contract YourContract is ERC721Enumerable {
     }
 
     // After calculating the total amount owed across all epochs, transfer it in a single transaction
-    if (totalAmount > 0) {
-        Address.sendValue(payable(msg.sender), totalAmount);
+    if (totalShare > 0) {
+        Address.sendValue(payable(msg.sender), totalShare);
     }
 }
 
     function mintNFT() public {
-				// this is to limit NFT mints to 1 per address
+				// this is to limit NFT mints to 1 per address 
 				require(balanceOf(msg.sender) == 0, "Address already owns an NFT");
 
 				// incrementing token ID
@@ -239,7 +237,7 @@ contract YourContract is ERC721Enumerable {
 				_activeTokens.increment();
 
         // Adjust the lastPrice by +10 as per requirement
-        lastPrice += 10;
+        lastPrice += 2700000000000;
         console.log("Minted NFT ID %s to %s", newItemId, msg.sender);
     }
 

@@ -7,7 +7,7 @@ import { GenericContractsDeclaration } from "~~/utils/scaffold-eth/contract";
 const deployedContracts = {
   31337: {
     YourContract: {
-      address: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+      address: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
       abi: [
         {
           inputs: [
@@ -287,11 +287,29 @@ const deployedContracts = {
           inputs: [
             {
               internalType: "uint256",
+              name: "epochNumber",
+              type: "uint256",
+            },
+            {
+              internalType: "uint256",
               name: "nftId",
               type: "uint256",
             },
           ],
-          name: "claimAllShares",
+          name: "claimShare",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+        {
+          inputs: [
+            {
+              internalType: "uint256",
+              name: "nftId",
+              type: "uint256",
+            },
+          ],
+          name: "claimShareAll",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",
@@ -623,24 +641,6 @@ const deployedContracts = {
             },
           ],
           name: "setProtocolFeePercent",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
-        },
-        {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "epochNumber",
-              type: "uint256",
-            },
-            {
-              internalType: "uint256",
-              name: "nftId",
-              type: "uint256",
-            },
-          ],
-          name: "shareWithdraw",
           outputs: [],
           stateMutability: "nonpayable",
           type: "function",

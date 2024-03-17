@@ -16,12 +16,19 @@ const WithdrawShare: React.FC<WithdrawShareProps> = ({  }) => {
   const { address, isConnected } = useAccount();
 
   // / get the token id for user 
-  const { data: id } = useScaffoldContractRead({
+  const { data: id, error} = useScaffoldContractRead({
     contractName: "YourContract",
     functionName: "tokenOfOwnerByIndex",
     args: [address, BigInt(0)],
   });
 
+  // Handle cases where the address owns no tokens
+if (error && error.message.includes("owner index out of bounds")) {
+  console.error("The address does not own a Billboard NFT.");
+  // Handle the error (e.g., disable functionality, show a message to the user)
+} else if (id) {
+  // Proceed with functionality for when the token ID is successfully retrieved
+}
 
 
   const [tokenID, setTokenID] = useState<number | undefined>();
@@ -29,17 +36,17 @@ const WithdrawShare: React.FC<WithdrawShareProps> = ({  }) => {
 
   const { writeAsync, isLoading, isMining } = useScaffoldContractWrite ({
     contractName: "YourContract",
-    functionName: "claimAllShares",
+    functionName: "claimSharesAll",
     args: [tokenID !== undefined ? BigInt(tokenID) : undefined],
   })
 
     return(
       <>
         <div>
-          Withdraw Share for {address} & id: {id?.toString()}
+          {/* Withdraw Share for {address} & id: {id?.toString()}
           <button className="btn btn-primary" onClick={() => writeAsync()} disabled={isLoading}>
             {isLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Withdraw All</>}
-          </button>
+          </button> */}
         </div>
       </>
     )
