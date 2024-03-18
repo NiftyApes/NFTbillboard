@@ -15,9 +15,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * A simple billboard smartcontract, where a message state variable is for sale! Folks who mint the NFT 
- * opt in to be advertised to, and so are entitled to a cut from the proceeds
+ * opt in to be advertised to, and so are entitled to a cut from the ad revenue
+ * users will see ads in their wallet, embedded in their app, or posted on social media like Warpcast
  * 
- * TODOS
+ * TODOS for V2
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
@@ -61,26 +62,23 @@ contract YourContract is ERC721Enumerable, Ownable {
 	// Billboard Variables
 	string public billboard = "This Space for Sale";
 	string public billboardURL = "https://adframe.xyz";
-	bool public premium = false;
-	uint256 public totalCounter = 0;
 	uint256 public basePrice = 270000000000000;
 	uint256 public lastPrice = basePrice;
 	uint256 public lastUpdateTime;
 	uint256 public decreaseRate = 270000000000;
 	uint256 public increaseRate = 2700000000000;
-	mapping(address => uint) public userBillboardCounter;
 
 
-	constructor(address _owner, string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
+// initiate the smart contract
+	constructor(string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
         lastUpdateTime = block.timestamp;
 				_commonURI = initialURI;
     }
-	// Events
+	// emitting an event when a billboard is changed
 	event BillboardChange(
 		address indexed billboardSetter,
 		string newBillboard,
 		string newBillboardURL,
-		bool premium,
 		uint256 value
 	);
 
@@ -88,7 +86,7 @@ contract YourContract is ERC721Enumerable, Ownable {
 	event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
 	/**
-	 * Function that allows anyone to change the state variable "billboard" of the contract
+	 * Function that allows anyone to change the state variable "billboard" and billboardURL of the contract
 	 *
 	 * @param _newBillboardMessage (string memory) - new billboard message to save on the contract
 	 * @param _newBillboardURL (string memory) - not required
@@ -126,7 +124,7 @@ contract YourContract is ERC721Enumerable, Ownable {
     epochs[currentEpoch] = epochData(nftsMintedSoFar, amtOwedPerNFT);
 		emit EpochUpdated(currentEpoch, nftsMintedSoFar, amtOwedPerNFT);
 		// emit: keyword used to trigger an event
-		emit BillboardChange(msg.sender, _newBillboardMessage, _newBillboardURL, msg.value > 0, 0);
+		emit BillboardChange(msg.sender, _newBillboardMessage, _newBillboardURL, msg.value);
 	}
 
 	function getAdjustedPrice() public view returns (uint256) {
@@ -228,7 +226,7 @@ contract YourContract is ERC721Enumerable, Ownable {
     }
 
 		 /**
-     * Function to allow the owner to change the billboard message.
+     * @dev Function to allow the owner to change the billboard message. Message is optional, otherwise it defaults to start message. In case of spam or harmful messages!
      * @param _newBillboardMessage The new message to set on the billboard.
      * @param _newBillboardURL The new URL to set on the billboard.
      */
@@ -246,12 +244,36 @@ contract YourContract is ERC721Enumerable, Ownable {
 				}
 
 				// Optionally, you can emit an event when the billboard message is changed by the admin
-				emit BillboardChange(msg.sender, billboard, billboardURL, premium, 0);
+				emit BillboardChange(msg.sender, billboard, billboardURL, 0);
 		}
 
-		function setProtocolFee(uint256 _newFeePercent) public onlyOwner {
+		function adminSetProtocolFee(uint256 _newFeePercent) public onlyOwner {
         require(_newFeePercent <= 100, "Fee cannot exceed 100%");
         protocolFee = _newFeePercent;
+    }
+
+		/**
+     * @dev Allows the admin to set a new base price (e.g, lowest possible price to charge)
+     * @param _newBasePrice The new base price to be set.
+     */
+    function setBasePrice(uint256 _newBasePrice) public onlyOwner {
+        basePrice = _newBasePrice;
+    }
+
+    /**
+     * @dev Allows the admin to set a new decrease rate. Decrease rate is applied every block to AdjustedPrice.
+     * @param _newDecreaseRate The new decrease rate to be set.
+     */
+    function setDecreaseRate(uint256 _newDecreaseRate) public onlyOwner {
+        decreaseRate = _newDecreaseRate;
+    }
+
+    /**
+     * @dev Allows the admin to set a new increase rate. Increase rate is applied upon updateBillboard and mintNFT
+     * @param _newIncreaseRate The new increase rate to be set.
+     */
+    function setIncreaseRate(uint256 _newIncreaseRate) public onlyOwner {
+        increaseRate = _newIncreaseRate;
     }
 
     // Override the _transfer function to prevent transfers
@@ -263,19 +285,46 @@ contract YourContract is ERC721Enumerable, Ownable {
         revert("NFTs are non-transferable");
     }
 
+    /**
+     * @dev allows user to burn the billboard. Adjusts the activeTokens count so accurate shares are recorded for future epochs.
+     * @param tokenId is token to be burned
+     */
 		function burn(uint256 tokenId) public {
 			require(ownerOf(tokenId) == msg.sender, "Caller is not the token owner");
 			_burn(tokenId);
-
 			_activeTokens.decrement();
 		}
 
     function totalActiveTokens() public view returns (uint256) {
         return _activeTokens.current();
     }
-	/**
-	 * Function that allows the contract to receive ETH
-	 */
-	receive() external payable {}
+/**
+ * @dev If the contract receives ETH, the ETH is split between all NFT owners without resetting the billboard message or the adjusted fee.
+ */
+receive() external payable {
+    // Ensure some ETH is sent
+    require(msg.value > 0, "No ETH sent");
+
+		// Ensure there are NFTs minted before proceeding
+		uint256 nftsMintedSoFar = _activeTokens.current();
+    require(nftsMintedSoFar > 0, "No NFTs minted");
+
+    // Calculate the protocol fee and the remainder to be distributed
+    uint256 fee = msg.value * protocolFee / 100;
+    protocolRevenue += fee;
+    uint256 remainder = msg.value - fee;
+
+    // Create a new epoch entry
+    currentEpoch += 1; // Move to next epoch
+
+     // Calculate the amount owed per NFT
+    uint256 amtOwedPerNFT = remainder / nftsMintedSoFar;
+
+    // Store the new epoch data
+    epochs[currentEpoch] = epochData(nftsMintedSoFar, amtOwedPerNFT);
+
+    // Emit an event for the new epoch creation
+    emit EpochUpdated(currentEpoch, nftsMintedSoFar, amtOwedPerNFT);
+	}
 }
 
