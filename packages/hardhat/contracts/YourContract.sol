@@ -22,17 +22,9 @@ import "@openzeppelin/contracts/utils/Address.sol";
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
  * @author zherring
  */
-contract YourContract is ERC721Enumerable {
+contract YourContract is ERC721Enumerable, Ownable {
 
-	// State Variables & Admin
-	address public immutable owner;
-
-	modifier isOwner() {
-		// msg.sender: predefined variable that represents address of the account that called the current function
-		require(msg.sender == owner, "Not the Owner");
-		_;
-	}
-
+	// state variables
 	uint256 public protocolFee = 10; // percentage protocol takes
 	uint256 public protocolRevenue = 0; // protocol's revenue 
 
@@ -55,7 +47,7 @@ contract YourContract is ERC721Enumerable {
 	string private _commonURI;
 
 
-	function setCommonURI(string memory newURI) public isOwner {
+	function setCommonURI(string memory newURI) public onlyOwner {
 			_commonURI = newURI;
 	}
 
@@ -68,50 +60,45 @@ contract YourContract is ERC721Enumerable {
 	
 	// Billboard Variables
 	string public billboard = "This Space for Sale";
+	string public billboardURL = "https://adframe.xyz";
 	bool public premium = false;
 	uint256 public totalCounter = 0;
 	uint256 public basePrice = 270000000000000;
 	uint256 public lastPrice = basePrice;
 	uint256 public lastUpdateTime;
 	uint256 public decreaseRate = 270000000000;
+	uint256 public increaseRate = 2700000000000;
 	mapping(address => uint) public userBillboardCounter;
 
 
 	constructor(address _owner, string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
-        owner = _owner;
         lastUpdateTime = block.timestamp;
 				_commonURI = initialURI;
     }
-	// Events: a way to emit log statements from smart contract that can be listened to by external parties
+	// Events
 	event BillboardChange(
 		address indexed billboardSetter,
 		string newBillboard,
+		string newBillboardURL,
 		bool premium,
 		uint256 value
 	);
 
 	event WithdrawalSuccessful(uint256 indexed epochNumber, uint256 indexed nftId, uint256 amountOwed);
-
-	// Constructor: Called once on contract deployment
-	// Check packages/hardhat/deploy/00_deploy_your_contract.ts
-	
-
-	// Modifier: used to define a set of rules that must be met before or after a function is executed
-	// Check the withdraw() function
-
-
 	event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
 	/**
 	 * Function that allows anyone to change the state variable "billboard" of the contract
 	 *
 	 * @param _newBillboardMessage (string memory) - new billboard message to save on the contract
+	 * @param _newBillboardURL (string memory) - not required
 	 */
-	function setBillboard(string memory _newBillboardMessage) public payable {
+	function setBillboard(string memory _newBillboardMessage, string memory _newBillboardURL ) public payable {
 		// Print data to the hardhat chain console. Remove when deploying to a live network.
 		console.log(
 			"Setting new billboard '%s' from %s",
 			_newBillboardMessage,
+			_newBillboardURL,
 			msg.sender
 		);
 
@@ -121,9 +108,8 @@ contract YourContract is ERC721Enumerable {
 
 		// Change state variables
 		billboard = _newBillboardMessage;
-		totalCounter += 1;
-		userBillboardCounter[msg.sender] += 1;
-		lastPrice = msg.value + 1;
+		billboardURL = _newBillboardURL;
+		lastPrice = msg.value + increaseRate;
 		lastUpdateTime = block.timestamp;
 
 		uint256 fee = msg.value * protocolFee / 100;
@@ -140,7 +126,7 @@ contract YourContract is ERC721Enumerable {
     epochs[currentEpoch] = epochData(nftsMintedSoFar, amtOwedPerNFT);
 		emit EpochUpdated(currentEpoch, nftsMintedSoFar, amtOwedPerNFT);
 		// emit: keyword used to trigger an event
-		emit BillboardChange(msg.sender, _newBillboardMessage, msg.value > 0, 0);
+		emit BillboardChange(msg.sender, _newBillboardMessage, _newBillboardURL, msg.value > 0, 0);
 	}
 
 	function getAdjustedPrice() public view returns (uint256) {
@@ -160,13 +146,13 @@ contract YourContract is ERC721Enumerable {
     return adjustedPrice;
 	}
 
-	function withdrawProtocolFees() public isOwner {
+	function withdrawProtocolFees() public onlyOwner {
         uint256 amount = protocolRevenue;
         protocolRevenue = 0; // Reset the accumulated fees to 0
 
         // Transfer the accumulated fees to the owner
-        (bool success, ) = owner.call{value: amount}("");
-        require(success, "Transfer failed.");
+			(bool success, ) = payable(owner()).call{value: amount}("");
+			require(success, "Transfer failed.");
     }
 
 	function claimShare(uint256 epochNumber, uint256 nftId) public {
@@ -237,22 +223,33 @@ contract YourContract is ERC721Enumerable {
 				_activeTokens.increment();
 
         // Adjust the lastPrice by +10 as per requirement
-        lastPrice += 2700000000000;
+        lastPrice += increaseRate;
         console.log("Minted NFT ID %s to %s", newItemId, msg.sender);
     }
 
 		 /**
      * Function to allow the owner to change the billboard message.
-     * @param _newMessage The new message to set on the billboard.
+     * @param _newBillboardMessage The new message to set on the billboard.
+     * @param _newBillboardURL The new URL to set on the billboard.
      */
-    function adminSetBillboardMessage(string memory _newMessage) public isOwner {
-        billboard = _newMessage;
+		function adminSetBillboardMessage(string memory _newBillboardMessage, string memory _newBillboardURL) public onlyOwner {
+				if (bytes(_newBillboardMessage).length == 0) {
+						billboard = "This Space for Sale"; // Default message
+				} else {
+						billboard = _newBillboardMessage;
+				}
 
-        // Optionally, you can emit an event when the billboard message is changed by the admin
-        emit BillboardChange(msg.sender, _newMessage, premium, 0);
-    }
+				if (bytes(_newBillboardURL).length == 0) {
+						billboardURL = "https://adframe.xyz"; // Default URL
+				} else {
+						billboardURL = _newBillboardURL;
+				}
 
-		function setProtocolFeePercent(uint256 _newFeePercent) public isOwner {
+				// Optionally, you can emit an event when the billboard message is changed by the admin
+				emit BillboardChange(msg.sender, billboard, billboardURL, premium, 0);
+		}
+
+		function setProtocolFee(uint256 _newFeePercent) public onlyOwner {
         require(_newFeePercent <= 100, "Fee cannot exceed 100%");
         protocolFee = _newFeePercent;
     }
