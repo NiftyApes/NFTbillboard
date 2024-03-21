@@ -1,10 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-// Useful for debugging. Remove when deploying to a live network.
-
-import "hardhat/console.sol";
-
 // Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -92,13 +88,6 @@ contract YourContract is ERC721Enumerable, Ownable {
 	 * @param _newBillboardURL (string memory) - not required
 	 */
 	function setBillboard(string memory _newBillboardMessage, string memory _newBillboardURL ) public payable {
-		// Print data to the hardhat chain console. Remove when deploying to a live network.
-		console.log(
-			"Setting new billboard '%s' from %s",
-			_newBillboardMessage,
-			_newBillboardURL,
-			msg.sender
-		);
 
 		uint256 adjustedPrice = getAdjustedPrice(); // 
 		require(msg.value >= adjustedPrice, "Insufficient funds sent");
@@ -140,7 +129,6 @@ contract YourContract is ERC721Enumerable, Ownable {
     }
 
     uint256 adjustedPrice = proposedDecrease > basePrice ? proposedDecrease : basePrice;
-    console.log("Adjusted price is:", adjustedPrice);
     return adjustedPrice;
 	}
 
@@ -222,7 +210,6 @@ contract YourContract is ERC721Enumerable, Ownable {
 
         // Adjust the lastPrice by +10 as per requirement
         lastPrice += increaseRate;
-        console.log("Minted NFT ID %s to %s", newItemId, msg.sender);
     }
 
 		 /**

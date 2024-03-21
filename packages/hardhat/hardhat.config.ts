@@ -113,6 +113,12 @@ const config: HardhatUserConfig = {
     baseSepolia: {
       url: "https://sepolia.base.org",
       accounts: [deployerPrivateKey],
+      verify: {
+        etherscan: {
+          apiUrl: "https://api-sepolia.basescan.org/",
+          apiKey: process.env.BASESCAN_API_KEY
+          },
+      },
     },
     scrollSepolia: {
       url: "https://sepolia-rpc.scroll.io",

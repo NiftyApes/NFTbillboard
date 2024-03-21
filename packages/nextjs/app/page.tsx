@@ -12,6 +12,9 @@ import SetBillboard from '../components/SetBillboard';
 import MintNFT from '../components/MintNFT';
 import WithdrawShare from '../components/WithdrawShare';
 
+const { address, isConnected } = useAccount();
+
+
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
   const { data: billboardMessage } = useScaffoldContractRead({
@@ -23,6 +26,14 @@ const Home: NextPage = () => {
     contractName: "YourContract",
     functionName: "getAdjustedPrice",
 })
+
+  // / get the token id for user 
+  const { data: tokenID, error} = useScaffoldContractRead({
+    contractName: "YourContract",
+    functionName: "tokenOfOwnerByIndex",
+    args: [address, BigInt(0)],
+  });
+
 
 // get price + let user set their own
 const [ethAmount, setEthAmount] = useState('');
