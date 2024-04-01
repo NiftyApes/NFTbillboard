@@ -8,11 +8,14 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+// @captn general comments
+// 1. Rename document and contract
+
 
 /**
  * A simple billboard smartcontract, where a message state variable is for sale! Folks who mint the NFT 
  * opt in to be advertised to, and so are entitled to a cut from the ad revenue
- * users will see ads in their wallet, embedded in their app, or posted on social media like Warpcast
+ * users will see ads in their wallet, embedded in their app, or posted on social media Źike Warpcast
  * 
  * TODOS for V2
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
@@ -30,9 +33,12 @@ contract YourContract is ERC721Enumerable, Ownable {
 		uint256 nftsMinted;
 		uint256 amtOwed;
 	}
+
 	// storing epoch data
 	mapping(uint256 => epochData) public epochs;
 	uint256 public currentEpoch = 0;
+
+    // @zherring label what each of these variables are in comments. I think it is epoch to nftId to hasWithdrawn bool but not sure. 
 	mapping(uint256 => mapping(uint256 => bool)) private hasWithdrawn;
 
 
@@ -52,6 +58,9 @@ contract YourContract is ERC721Enumerable, Ownable {
 			require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
 			return _commonURI;
     }
+
+    // @xherring State variables should be above functions, errors, and events.
+
 	// Storing NFT withdrawal data
 	mapping(uint256 => uint256[]) private nftIdWithdraws;
 	
@@ -70,6 +79,9 @@ contract YourContract is ERC721Enumerable, Ownable {
         lastUpdateTime = block.timestamp;
 				_commonURI = initialURI;
     }
+
+    // @zherring events dhould be above the constructor
+
 	// emitting an event when a billboard is changed
 	event BillboardChange(
 		address indexed billboardSetter,
@@ -81,6 +93,8 @@ contract YourContract is ERC721Enumerable, Ownable {
 	event WithdrawalSuccessful(uint256 indexed epochNumber, uint256 indexed nftId, uint256 amountOwed);
 	event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
+    // @zherring full NATSPEC comments for all events, errors, and functions is super helpful for review. You are almost there with this function. 
+
 	/**
 	 * Function that allows anyone to change the state variable "billboard" and billboardURL of the contract
 	 *
@@ -89,7 +103,7 @@ contract YourContract is ERC721Enumerable, Ownable {
 	 */
 	function setBillboard(string memory _newBillboardMessage, string memory _newBillboardURL ) public payable {
 
-		uint256 adjustedPrice = getAdjustedPrice(); // 
+		uint256 adjustedPrice = getAdjustedPrice();
 		require(msg.value >= adjustedPrice, "Insufficient funds sent");
 
 
@@ -107,6 +121,9 @@ contract YourContract is ERC721Enumerable, Ownable {
 
 		// Calculate the amount owed per NFT, handling division by zero by setting amtOwed to 0 if no NFTs have been minted
     uint256 nftsMintedSoFar = _activeTokens.current();
+
+    // @zherring same point about as below about ternary statements. My personal preference is to avoid them and make logic explicit. 
+
     uint256 amtOwedPerNFT = nftsMintedSoFar > 0 ? remainder / nftsMintedSoFar : 0;
 
 		// Store the new epoch data
@@ -116,10 +133,14 @@ contract YourContract is ERC721Enumerable, Ownable {
 		emit BillboardChange(msg.sender, _newBillboardMessage, _newBillboardURL, msg.value);
 	}
 
+    // @Zherring NATSPEC comments
+
 	function getAdjustedPrice() public view returns (uint256) {
     uint256 timeElapsed = block.timestamp - lastUpdateTime;
     uint256 decreaseAmount = timeElapsed * decreaseRate;
 
+    // @zherring commenting each line of code is also helpful. This is novel and relatively comlpex logic. 
+    // It's useful to know what your intention for the code is so I can see if it is actually accomplishing that intention. 
     uint256 proposedDecrease;
     if (lastPrice > decreaseAmount) {
         proposedDecrease = lastPrice - decreaseAmount;
@@ -128,10 +149,13 @@ contract YourContract is ERC721Enumerable, Ownable {
         proposedDecrease = basePrice;
     }
 
+    // @zherring my personal prefence is to avoid ternary statments and make all logic explicit, rather than have the reader interpret symbols. 
+    // In js webdev its no big deal, but in solidity my understanding of best practice is to keep things explicit and as simple as possible to reduce context switches or relying on an assumpotion of what a reader knows. 
     uint256 adjustedPrice = proposedDecrease > basePrice ? proposedDecrease : basePrice;
     return adjustedPrice;
 	}
 
+    // @zherring NATSPEC. Also, it is helpful to have admin functions in a separate section of the contract. Just to improve readablility and reduce context switching for readers. 
 	function withdrawProtocolFees() public onlyOwner {
         uint256 amount = protocolRevenue;
         protocolRevenue = 0; // Reset the accumulated fees to 0
@@ -141,6 +165,9 @@ contract YourContract is ERC721Enumerable, Ownable {
 			require(success, "Transfer failed.");
     }
 
+    // @zherring NATSPEC
+    // Another small issue with this function is that is asks for the epoch number and nftId which are emitted in separate events.
+    // So the user and/or the dev team will need to listen for and aggregate this data. Alternately you could emit this data in the billboard change event so it is in one place. 
 	function claimShare(uint256 epochNumber, uint256 nftId) public {
 		   
     require(ownerOf(nftId) == msg.sender, "Caller does not own the NFT"); // Verify the caller owns the NFT
@@ -166,6 +193,8 @@ contract YourContract is ERC721Enumerable, Ownable {
 		 emit WithdrawalSuccessful(epochNumber, nftId, amountOwed);
 					
 	}
+
+    // @zherring NATSPEC
 
 	function claimShareAll(uint256 nftId) public {
     require(ownerOf(nftId) == msg.sender, "Caller does not own the NFT");
@@ -196,7 +225,10 @@ contract YourContract is ERC721Enumerable, Ownable {
     }
 }
 
+    // @zherring NATSPEC. Also, my preference would be to have this function be above the claim functions to follow the logical flow of the contract. 
+
     function mintNFT() public {
+                // @zherring someone could simply sybil the contract and get around this require statement. It is a medium to High severity issue. 
 				// this is to limit NFT mints to 1 per address 
 				require(balanceOf(msg.sender) == 0, "Address already owns an NFT");
 
