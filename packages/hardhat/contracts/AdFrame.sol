@@ -59,10 +59,6 @@ contract AdFrame is ERC721Enumerable, Ownable {
 	uint256 public decreaseRate = 270000000000;
 	uint256 public increaseRate = 2700000000000;
 
-    // Set new URI for NFTs
-	function setCommonURI(string memory newURI) public onlyOwner {
-			_commonURI = newURI;
-	}
 
     /**
      * @dev Returns the Uniform Resource Identifier (URI) for `tokenId` token.
@@ -110,14 +106,11 @@ contract AdFrame is ERC721Enumerable, Ownable {
      */
     event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
-// initiate the smart contract
+    // initiate the smart contract
 	constructor(string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
         lastUpdateTime = block.timestamp;
 				_commonURI = initialURI;
     }
-
-
-    // @zherring full NATSPEC comments for all events, errors, and functions is super helpful for review. You are almost there with this function. 
 
 	/**
 	 * @dev Function that allows anyone to change the state variable "billboard" and billboardURL of the contract.
@@ -221,27 +214,6 @@ contract AdFrame is ERC721Enumerable, Ownable {
         lastPrice += increaseRate;
     }
     
-    /**
-     * @dev Withdraws the accumulated protocol fees to the owner's address.
-     * This function can only be called by the contract owner. It transfers the total accumulated
-     * protocol fees to the owner and resets the protocol revenue to zero.
-     * 
-     * Emits a `Transfer` event if the transfer is successful.
-     *
-     * Requirements:
-     * - Can only be called by the contract owner.
-     *
-     * @notice Use this function to withdraw the accumulated protocol fees to the owner's address.
-     */
-    function withdrawProtocolFees() public onlyOwner {
-        uint256 amount = protocolRevenue;
-        protocolRevenue = 0; // Reset the accumulated fees to 0
-
-        // Transfer the accumulated fees to the owner
-        (bool success, ) = payable(owner()).call{value: amount}("");
-        require(success, "Transfer failed.");
-    }
-
     // @zherring NATSPEC
     // Another small issue with this function is that is asks for the epoch number and nftId which are emitted in separate events.
     // So the user and/or the dev team will need to listen for and aggregate this data. Alternately you could emit this data in the billboard change event so it is in one place. 
@@ -287,8 +259,6 @@ contract AdFrame is ERC721Enumerable, Ownable {
         // Emitting successful withdrawal
             emit WithdrawalSuccessful(epochNumber, nftId, amountOwed);                  
 	}
-
-
     /**
      * @dev Allows an NFT owner to claim their share of the revenue generated from the billboard advertisement across all epochs in which they have not yet claimed their share.
      * This function iterates through all epochs, checks if the NFT owner has already claimed their share for each epoch, and if not, calculates and accumulates the amount owed to them.
@@ -333,7 +303,33 @@ contract AdFrame is ERC721Enumerable, Ownable {
             Address.sendValue(payable(msg.sender), totalShare);
         }
     }
-		 /**
+    // Allows contract owner to set new URI for NFTs
+	function setCommonURI(string memory newURI) public onlyOwner {
+			_commonURI = newURI;
+	}
+
+     /**
+     * @dev Withdraws the accumulated protocol fees to the contract owner's address.
+     * This function can only be called by the contract owner. It transfers the total accumulated
+     * protocol fees to the owner and resets the protocol revenue to zero.
+     * 
+     * Emits a `Transfer` event if the transfer is successful.
+     *
+     * Requirements:
+     * - Can only be called by the contract owner.
+     *
+     * @notice Use this function to withdraw the accumulated protocol fees to the owner's address.
+     */
+    function withdrawProtocolFees() public onlyOwner {
+        uint256 amount = protocolRevenue;
+        protocolRevenue = 0; // Reset the accumulated fees to 0
+
+        // Transfer the accumulated fees to the owner
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "Transfer failed.");
+    }
+
+    /**
      * @dev Function to allow the owner to change the billboard message. Message is optional, otherwise it defaults to start message. In case of spam or harmful messages!
      * @param _newBillboardMessage The new message to set on the billboard.
      * @param _newBillboardURL The new URL to set on the billboard.
@@ -406,35 +402,35 @@ contract AdFrame is ERC721Enumerable, Ownable {
     function totalActiveTokens() public view returns (uint256) {
         return _activeTokens.current();
     }
-/**
- * @dev If the contract receives ETH, the ETH is split between all NFT owners without resetting the billboard message or the adjusted fee.
- * could be a fun way to reward ALL NFT holders!
- */
-receive() external payable {
-    // Ensure some ETH is sent
-    require(msg.value > 0, "No ETH sent");
+    /**
+     * @dev If the contract receives ETH, the ETH is split between all NFT owners without resetting the billboard message or the adjusted fee.
+     * could be a fun way to reward ALL NFT holders!
+     */
+    receive() external payable {
+        // Ensure some ETH is sent
+        require(msg.value > 0, "No ETH sent");
 
-    // Ensure there are NFTs minted before proceeding
-    uint256 nftsMintedSoFar = _activeTokens.current();
-    uint256 totalNFTsMinted = _tokenIds.current();
-    require(nftsMintedSoFar > 0, "No NFTs minted");
+        // Ensure there are NFTs minted before proceeding
+        uint256 nftsMintedSoFar = _activeTokens.current();
+        require(nftsMintedSoFar > 0, "No NFTs minted");
 
-    // Calculate the protocol fee and the remainder to be distributed
-    uint256 fee = msg.value * protocolFee / 100;
-    protocolRevenue += fee;
-    uint256 remainder = msg.value - fee;
+        // Calculate the protocol fee and the remainder to be distributed
+        uint256 fee = msg.value * protocolFee / 100;
+        protocolRevenue += fee;
+        uint256 remainder = msg.value - fee;
 
-    // Create a new epoch entry
-    currentEpoch += 1; // Move to next epoch
+        // Create a new epoch entry
+        currentEpoch += 1; // Move to next epoch
 
-     // Calculate the amount owed per NFT
-    uint256 amtOwedPerNFT = remainder / nftsMintedSoFar;
+        // Calculate the amount owed per NFT
+        uint256 amtOwedPerNFT = remainder / nftsMintedSoFar;
 
-    // Store the new epoch data
-    epochs[currentEpoch] = epochData(totalNFTsMinted, amtOwedPerNFT);
+        // Store the new epoch data
+        uint256 totalNFTsMinted = _tokenIds.current();
+        epochs[currentEpoch] = epochData(totalNFTsMinted, amtOwedPerNFT);
 
-    // Emit an event for the new epoch creation
-    emit EpochUpdated(currentEpoch, totalNFTsMinted, amtOwedPerNFT);
+        // Emit an event for the new epoch creation
+        emit EpochUpdated(currentEpoch, totalNFTsMinted, amtOwedPerNFT);
 	}
 }
 
