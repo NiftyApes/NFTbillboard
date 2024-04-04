@@ -34,7 +34,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
 
   // Get the deployed contract to interact with it after deploying.
   const AdFrame = await hre.ethers.getContract<Contract>("AdFrame", deployer);
-  console.log("👋 Initial greeting:", await AdFrame.billboard());
+  // console.log("👋 Initial greeting:", await AdFrame.billboard());
 };
 
 export default deployYourContract;
