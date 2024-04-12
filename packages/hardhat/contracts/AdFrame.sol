@@ -46,6 +46,8 @@ contract AdFrame is ERC721Enumerable, Ownable {
 	Counters.Counter private _activeTokens; // Active (non-burned) token count
 	//// URI for all tokens, unnecessary to have unique URI for each NFT since they all share the same billboard message
 	string private _commonURI;
+    // Add this mapping to store URIs for each token
+    mapping(uint256 => string) private _tokenURIs;
 
 	// Storing NFT withdrawal data
 	mapping(uint256 => uint256[]) private nftIdWithdraws;
@@ -72,7 +74,8 @@ contract AdFrame is ERC721Enumerable, Ownable {
      */
 	function tokenURI(uint256 tokenId) public view override returns (string memory) {
 			require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-			return _commonURI;
+			// Return the concatenated URI
+            return string(abi.encodePacked(_commonURI, "/", Strings.toString(tokenId)));
     }
     /**
      * @dev Emitted when the billboard message and URL are changed.
@@ -107,9 +110,9 @@ contract AdFrame is ERC721Enumerable, Ownable {
     event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
     // initiate the smart contract
-	constructor(string memory initialURI) ERC721("BillboardNFT", "BBNFT") {
+	constructor(string memory initialURI) ERC721("AdFrameNFT", "AFNFT") {
         lastUpdateTime = block.timestamp;
-				_commonURI = initialURI;
+                _commonURI = initialURI;
     }
 
 	/**

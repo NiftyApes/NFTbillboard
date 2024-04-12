@@ -25,7 +25,7 @@ const deployYourContract: DeployFunction = async function (hre: HardhatRuntimeEn
   await deploy("AdFrame", {
     from: deployer,
     // Contract constructor arguments
-    args: ["adframe.vercel.app/api/nft/"],
+    args: ["https://adframe.vercel.app/api/nft/"],
     log: true,
     // autoMine: can be passed to the deploy function to make the deployment process faster on local networks by
     // automatically mining the contract deployment transaction. There is no effect on live networks.
