@@ -1860,8 +1860,8 @@ contract AdFrame is ERC721Enumerable, Ownable {
 	uint256 public basePrice = 270000000000000;
 	uint256 public lastPrice = basePrice;
 	uint256 public lastUpdateTime;
-	uint256 public decreaseRate = 270000000000;
-	uint256 public increaseRate = 2700000000000;
+	uint256 public decreaseRate = 8100000000;
+	uint256 public increaseRate = 22000000000000;
 
 
     /**

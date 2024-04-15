@@ -103,8 +103,14 @@ const config: HardhatUserConfig = {
       accounts: [deployerPrivateKey],
     },
     base: {
-      url: "https://mainnet.base.org",
+      url: "https://api.basescan.org/api",
       accounts: [deployerPrivateKey],
+      verify: {
+        etherscan: {
+          apiUrl: "https://api.basescan.org/",
+          apiKey: process.env.BASESCAN_API_KEY
+        }
+      }
     },
     baseGoerli: {
       url: "https://goerli.base.org",
