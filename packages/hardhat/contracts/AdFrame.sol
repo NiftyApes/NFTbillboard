@@ -121,7 +121,7 @@ contract AdFrame is ERC721Enumerable, Ownable {
     event EpochUpdated(uint256 indexed epochIndex, uint256 nftsMinted, uint256 amtOwed);
 
     // initiate the smart contract
-	constructor(string memory initialURI) ERC721("AdFrameNFT", "AFNFT") {
+	constructor(string memory initialURI) ERC721("BasedGhoulAds", "BSDGOULAD") {
         lastUpdateTime = block.timestamp;
                 _commonURI = initialURI;
     }

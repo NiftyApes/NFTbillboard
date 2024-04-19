@@ -1939,7 +1939,7 @@ const deployedContracts = {
   },
   84532: {
     AdFrame: {
-      address: "0xc828BAC5a1dfE9dF78Ee6d3564D505F2B7F2c91A",
+      address: "0x5B3C417F29e6b14F1DD6734eD3D6fA470C9B7174",
       abi: [
         {
           inputs: [
