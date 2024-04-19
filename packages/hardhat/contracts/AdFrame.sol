@@ -17,7 +17,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
  * TODOS for V2
  *  - Figure out refund for ads that are replaced too quickly that doesn't encourage too much sybling
  *  - 	- Idea: 10% Protocol Fee paid regardless, small window (1 hour?)
- *  - Figure out some friction for Sybiling audience growth
+ *  - Figure out some friction for Sybiling audience growth (cost to mint?)
+ *  - Add mint-pause for admin
+ *  - Add whitelist for advertisers
+ *  - Add whitelist for audience --- DONE
  * @author zherring
  */
 contract AdFrame is ERC721Enumerable, Ownable {
