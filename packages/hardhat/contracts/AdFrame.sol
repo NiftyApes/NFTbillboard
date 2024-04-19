@@ -49,6 +49,11 @@ contract AdFrame is ERC721Enumerable, Ownable {
     // Add this mapping to store URIs for each token
     mapping(uint256 => string) private _tokenURIs;
 
+    // Creating the mint whitelist starting with ownership of NFTs of whitelisted contracts
+    mapping(address => bool) public whitelistedNFTContracts;
+    // Mapping from contract address to token ID to boolean for used tokens
+    mapping(address => mapping(uint256 => bool)) public usedTokens;
+
 	// Storing NFT withdrawal data
 	mapping(uint256 => uint256[]) private nftIdWithdraws;
 	
@@ -91,6 +96,9 @@ contract AdFrame is ERC721Enumerable, Ownable {
 		string newBillboardURL,
 		uint256 value
 	);
+
+    event ContractWhitelistAdd(address indexed contractAddress);
+    event ContractWhitelistRemove(address indexed contractAddress);
 
     /**
      * @dev Emitted when a withdrawal is successful.
@@ -195,23 +203,41 @@ contract AdFrame is ERC721Enumerable, Ownable {
      *
      * Requirements:
      * - The caller must not already own an NFT minted by this contract to prevent Sybil attacks and ensure fair distribution.
+     * - The NFT contract must be whitelisted to mint NFTs from.
+     * - The token ID must not have already been used to mint an NFT.
+     * - The caller must own the token in the specified NFT contract.
+     * - The token must not have already been used to mint an NFT.
      *
      * Emits a `Transfer` event as defined in the ERC721 standard, indicating the minting of a new NFT to the caller's address.
      *
      * Note: The function includes a safeguard against Sybil attacks by limiting minting to one NFT per address. However, this measure may not fully prevent determined attackers from circumventing the restriction through the use of multiple addresses.
      */
-    function mintNFT() public {
+    function mintNFT(address nftContract, uint256 tokenId) public {
                 // @zherring someone could simply sybil the contract and get around this require statement. It is a medium to High severity issue. 
                 // this is to limit NFT mints to 1 per address 
                 require(balanceOf(msg.sender) == 0, "Address already owns an NFT");
 
-                // incrementing token ID
+        // check if the NFT contract is whitelisted
+        require(whitelistedNFTContracts[nftContract], "NFT contract is not whitelisted");
+
+        // check if the token ID has already been used
+        require(!usedTokens[nftContract][tokenId], "Token ID has already been used");
+
+        IERC721 nft = IERC721(nftContract);
+
+        // Verify the caller owns the token in the specified NFT contract
+        require(nft.ownerOf(tokenId) == msg.sender, "Caller does not own the token");
+
+        // Mark the token as used for minting
+        usedTokens[nftContract][tokenId] = true;
+
+        // incrementing token ID
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
         _mint(msg.sender, newItemId);
 
-                // increment active token counter
-                _activeTokens.increment();
+        // increment active token counter
+        _activeTokens.increment();
 
         // Adjust the lastPrice by +10 as per requirement
         lastPrice += increaseRate;
@@ -357,6 +383,38 @@ contract AdFrame is ERC721Enumerable, Ownable {
 		function adminSetProtocolFee(uint256 _newFeePercent) public onlyOwner {
         require(_newFeePercent <= 100, "Fee cannot exceed 100%");
         protocolFee = _newFeePercent;
+    }
+
+    /**
+     * @dev Adds an NFT contract address to the whitelist, allowing tokens from this contract to be used for minting in the AdFrame contract.
+     * Only the owner of the AdFrame contract can add contracts to the whitelist.
+     *
+     * Emits a `ContractWhitelisted` event upon successfully adding a contract to the whitelist.
+     *
+     * Requirements:
+     * - The caller must be the owner of the AdFrame contract.
+     *
+     * @param _contract The address of the NFT contract to add to the whitelist.
+     */
+    function adminAddWhitelist(address _contract) public onlyOwner {
+        whitelistedNFTContracts[_contract] = true;
+        emit ContractWhitelistAdd(_contract);
+    }
+
+    /**
+     * @dev Removes an NFT contract address from the whitelist, preventing tokens from this contract from being used for minting in the AdFrame contract.
+     * Only the owner of the AdFrame contract can remove contracts from the whitelist.
+     *
+     * Emits a `ContractRemovedFromWhitelist` event upon successfully removing a contract from the whitelist.
+     *
+     * Requirements:
+     * - The caller must be the owner of the AdFrame contract.
+     *
+     * @param _contract The address of the NFT contract to remove from the whitelist.
+     */
+    function adminRemoveWhitelist(address _contract) public onlyOwner {
+        whitelistedNFTContracts[_contract] = false;
+        emit ContractWhitelistRemove(_contract);
     }
 
     /**
