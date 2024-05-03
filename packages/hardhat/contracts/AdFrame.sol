@@ -101,58 +101,56 @@ contract AdFrame is ERC721Enumerable, Ownable {
 
         return string(abi.encodePacked('data:application/json;base64,', json));
     }
-    
     function generateSVGImage(string memory _text, string memory _url) internal pure returns (string memory) {
-        // Sanitize text and URL
-        string memory sanitizedText = sanitizeString(_text);
-        string memory sanitizedUrl = sanitizeString(_url);
-
-
         return string(
             abi.encodePacked(
+                // Sanitize text and URL
                 '<svg xmlns="http://www.w3.org/2000/svg" width="650" height="650">',
                 '<rect width="100%" height="100%" fill="black" />',
-                '<g transform="translate(300, 300)">',
-                '<foreignObject width="600" height="600">',
-                '<div xmlns="http://www.w3.org/1999/xhtml" style="color: white; font-family: sans-serif; font-size: 50px; text-align: center; vertical-align: middle; white-space: pre-wrap; display: table-cell; height: 500px;">',
-                sanitizedText,
-                '<p style="font-size: 15px;">',
-                sanitizedUrl,
+                // '<g transform="translate(0, 300)">',
+                '<foreignObject width="100%" height="100%">',
+                '<div xmlns="http://www.w3.org/1999/xhtml" style="color: white; font-family: sans-serif; text-align: center; vertical-align: middle; white-space: pre-wrap; display: table-cell; width: 650px; height: 650px; padding: 16px;">',
+                '<p style="font-size: 50px;">',
+                _text,
+                '</p><p style="font-size: 20px;">',
+                _url,
                 '</p>',
                 '</div>',
                 '</foreignObject>',
-                '</g>',
+                // '</g>',
                 '</svg>'
             )
         );
     }
 
-
     function sanitizeString(string memory _input) internal pure returns (string memory) {
-        bytes memory inputBytes = bytes(_input);
-        uint256 length = inputBytes.length;
-        bytes memory sanitizedBytes = new bytes(length);
-        uint256 sanitizedLength = 0;
+    bytes memory inputBytes = bytes(_input);
+    bytes memory sanitizedBytes = new bytes(inputBytes.length);
+    uint256 sanitizedLength = 0;
 
-        for (uint256 i = 0; i < length; i++) {
-            // Allow only alphanumeric characters, spaces, and basic punctuation
-            if (
-                (inputBytes[i] >= 0x30 && inputBytes[i] <= 0x39) || // 0-9
-                (inputBytes[i] >= 0x41 && inputBytes[i] <= 0x5A) || // A-Z
-                (inputBytes[i] >= 0x61 && inputBytes[i] <= 0x7A) || // a-z
-                inputBytes[i] == 0x20 || // Space
-                (inputBytes[i] >= 0x21 && inputBytes[i] <= 0x2F) || // Punctuation ! to /
-                (inputBytes[i] >= 0x3A && inputBytes[i] <= 0x40) || // Punctuation : to @
-                (inputBytes[i] >= 0x5B && inputBytes[i] <= 0x60) || // Punctuation [ to `
-                (inputBytes[i] >= 0x7B && inputBytes[i] <= 0x7E) // Punctuation { to ~
-            ) {
-                sanitizedBytes[sanitizedLength++] = inputBytes[i];
-            }
-            // Ignore other characters
+    for (uint256 i = 0; i < inputBytes.length; i++) {
+        // Allow only alphabetic characters and specific punctuation
+        if (
+            (inputBytes[i] >= 0x41 && inputBytes[i] <= 0x5A) || // A-Z
+            (inputBytes[i] >= 0x61 && inputBytes[i] <= 0x7A) || // a-z
+            inputBytes[i] == 0x20 || // Space
+            inputBytes[i] == 0x2E || // Period (.)
+            inputBytes[i] == 0x2C || // Comma (,)
+            inputBytes[i] == 0x21 || // Exclamation (!)
+            inputBytes[i] == 0x3F    // Question mark (?)
+        ) {
+            sanitizedBytes[sanitizedLength++] = inputBytes[i];
         }
-
-        return string(sanitizedBytes);
     }
+
+    // Create a new bytes array with the exact length of sanitized characters
+    bytes memory trimmedSanitizedBytes = new bytes(sanitizedLength);
+    for (uint256 j = 0; j < sanitizedLength; j++) {
+        trimmedSanitizedBytes[j] = sanitizedBytes[j];
+    }
+
+    return string(trimmedSanitizedBytes);
+}
 
     /**
      * @dev Emitted when the billboard message and URL are changed.
@@ -203,10 +201,12 @@ contract AdFrame is ERC721Enumerable, Ownable {
 		uint256 adjustedPrice = getAdjustedPrice();
 		require(msg.value >= adjustedPrice, "Insufficient funds sent");
 
+        string memory sanitizedText = sanitizeString(_newBillboardMessage);
+        string memory sanitizedUrl = sanitizeString(_newBillboardURL);
 
 		// Change state variables
-		billboard = _newBillboardMessage;
-		billboardURL = _newBillboardURL;
+		billboard = sanitizedText;
+		billboardURL = sanitizedUrl;
 		lastPrice = msg.value + increaseRate;
 		lastUpdateTime = block.timestamp;
 
