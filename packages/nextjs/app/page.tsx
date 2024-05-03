@@ -1,13 +1,43 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
 import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Address } from "~~/components/scaffold-eth";
+import { useScaffoldContractRead } from "~~/hooks/scaffold-eth"; 
 
 const Home: NextPage = () => {
   const { address: connectedAddress } = useAccount();
+
+  const [imageSrc, setImageSrc] = useState('');
+  const [decodedJson, setDecodedJson] = useState('');
+
+  const { data: nftID, isLoading: isNFTIDLoading } = useScaffoldContractRead({
+    contractName: "AdFrame",
+    functionName: "tokenOfOwnerByIndex",
+    args: [connectedAddress, BigInt(0)],
+  });
+
+  const { data: nftMeta, isLoading: isNFTMetaLoading } = useScaffoldContractRead({
+    contractName: "AdFrame",
+    functionName: "tokenURI",
+    args: [nftID],
+  });
+
+
+  useEffect(() => {
+    if(nftMeta) {
+      const base64String = nftMeta.split(',')[1]; // Split the string and take the part after the comma
+      const decodedJson = window.atob(base64String);
+      const json = JSON.parse(decodedJson);
+      setImageSrc(json.image); // Directly use the image data URI
+      setDecodedJson(JSON.stringify(json, null, 2)); // Pretty print JSON
+    }
+  }, [nftMeta])
+
+  console.log(nftID, nftMeta);
 
   return (
     <>
@@ -20,6 +50,9 @@ const Home: NextPage = () => {
           <div className="flex justify-center items-center space-x-2">
             <p className="my-2 font-medium">Connected Address:</p>
             <Address address={connectedAddress} />
+          </div>
+          <div className="flex justify-center items-center space-x-2">
+            <img src={imageSrc} alt="NFT" className="w-1/2 h-1/2" />
           </div>
           <p className="text-center text-lg">
             Get started by editing{" "}

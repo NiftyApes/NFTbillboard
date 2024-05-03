@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
 
 
 /**
@@ -24,7 +25,7 @@ contract AdFrame is ERC721Enumerable, Ownable {
 
 	// state variables
 	uint256 public protocolFee = 10; // percentage protocol takes
-	uint256 public protocolRevenue = 0; // protocol's revenue 
+	uint256 public protocolRevenue = 0; // protocol's revenue initialized at zero
 
 	// Epoch data, where I store the number of NFTs minted (will limit withdraws to NFT ids >= total minted) and the amount paid to track how much they're owed
 	struct epochData {
@@ -72,11 +73,87 @@ contract AdFrame is ERC721Enumerable, Ownable {
      * @param tokenId uint256 ID of the token to query.
      * @return string memory URI for the token.
      */
-	function tokenURI(uint256 tokenId) public view override returns (string memory) {
-			require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-			// Return the concatenated URI
-            return string(abi.encodePacked(_commonURI, "/", Strings.toString(tokenId)));
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
+
+        // Use the current billboard message and URL
+        string memory name = string(abi.encodePacked("AdFrame #", Strings.toString(tokenId)));
+        string memory description = "A unique NFT that displays your message on a digital billboard.";
+        string memory message = billboard;  // Use the current billboard message
+        string memory url = billboardURL;   // Use the current billboard URL
+
+        // Generate SVG image
+        string memory svg = generateSVGImage(message, url);
+        string memory image = string(abi.encodePacked('data:image/svg+xml;base64,', Base64.encode(bytes(svg))));
+
+        // Create JSON metadata
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name":"', name,
+                        '", "description":"', description,
+                        '", "image":"', image, '"}'
+                    )
+                )
+            )
+        );
+
+        return string(abi.encodePacked('data:application/json;base64,', json));
     }
+    
+    function generateSVGImage(string memory _text, string memory _url) internal pure returns (string memory) {
+        // Sanitize text and URL
+        string memory sanitizedText = sanitizeString(_text);
+        string memory sanitizedUrl = sanitizeString(_url);
+
+
+        return string(
+            abi.encodePacked(
+                '<svg xmlns="http://www.w3.org/2000/svg" width="650" height="650">',
+                '<rect width="100%" height="100%" fill="black" />',
+                '<g transform="translate(300, 300)">',
+                '<foreignObject width="600" height="600">',
+                '<div xmlns="http://www.w3.org/1999/xhtml" style="color: white; font-family: sans-serif; font-size: 50px; text-align: center; vertical-align: middle; white-space: pre-wrap; display: table-cell; height: 500px;">',
+                sanitizedText,
+                '<p style="font-size: 15px;">',
+                sanitizedUrl,
+                '</p>',
+                '</div>',
+                '</foreignObject>',
+                '</g>',
+                '</svg>'
+            )
+        );
+    }
+
+
+    function sanitizeString(string memory _input) internal pure returns (string memory) {
+        bytes memory inputBytes = bytes(_input);
+        uint256 length = inputBytes.length;
+        bytes memory sanitizedBytes = new bytes(length);
+        uint256 sanitizedLength = 0;
+
+        for (uint256 i = 0; i < length; i++) {
+            // Allow only alphanumeric characters, spaces, and basic punctuation
+            if (
+                (inputBytes[i] >= 0x30 && inputBytes[i] <= 0x39) || // 0-9
+                (inputBytes[i] >= 0x41 && inputBytes[i] <= 0x5A) || // A-Z
+                (inputBytes[i] >= 0x61 && inputBytes[i] <= 0x7A) || // a-z
+                inputBytes[i] == 0x20 || // Space
+                (inputBytes[i] >= 0x21 && inputBytes[i] <= 0x2F) || // Punctuation ! to /
+                (inputBytes[i] >= 0x3A && inputBytes[i] <= 0x40) || // Punctuation : to @
+                (inputBytes[i] >= 0x5B && inputBytes[i] <= 0x60) || // Punctuation [ to `
+                (inputBytes[i] >= 0x7B && inputBytes[i] <= 0x7E) // Punctuation { to ~
+            ) {
+                sanitizedBytes[sanitizedLength++] = inputBytes[i];
+            }
+            // Ignore other characters
+        }
+
+        return string(sanitizedBytes);
+    }
+
     /**
      * @dev Emitted when the billboard message and URL are changed.
      *
